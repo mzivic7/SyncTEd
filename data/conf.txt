@@ -1,0 +1,9 @@
+host = True
+save_on_quit = True
+tab_spaces_num = 4
+window_width = 800
+window_height = 600
+client_address = localhost
+client_port = 5731
+host_local_address = localhost
+host_local_port = 5731
