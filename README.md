@@ -8,11 +8,14 @@ Written in Python with PyGame.
 This text editor consist from 2 parts: host and client.
 They are ran on different devices. Host must be firts.
 Which one is host is set in "conf.txt" located in "data" folder in project dir.
-Afther that, host must be port-forwareded or tunneled with [ngrok](https://ngrok.com/). Port and host adress must be set in "conf.txt"
+Host must be on LAN, port-forwareded or tunneled with [ngrok](https://ngrok.com/). Port and host adress must be set in "conf.txt".
+SyncTEd is not suitable for TOR, since it has large latency.
+
 In "conf.txt" are several more settings:
 - Host - if True: this is host, if False: this is client
 - Save on quit - set False to stop it from asking to save on quit
-- Tab spaces num - change how many spaces wide will be tab
+- 
+Tab spaces num - change how many spaces wide will be tab
 - Window width and heigth - in pixels
 - Client address and port - this config is only for client, hosts adress and port on which client will connect
 - Host local address and port - this config is only for host, address and port on which will client cnnect 
@@ -21,6 +24,7 @@ Keys:
 - Tab
 - Save: CTRL+S
 - Load: CTRL+L
+
 [basic ngrok setup](use_with_ngrok.md)
 ## Building
 ### Linux
@@ -34,11 +38,11 @@ Keys:
 3. Open terminal, cd to unzipped folder
 4. Install requirements: `pip install -r requirements.txt`
 5. Run build script: `python build.py`
-## Future progress
-There will be implemented some more features like:
-- Scrolling
-- Save to loaded file
+## To Do
+- Encryption with paspharse or RSA
+- Allow client to load file
 - Capital letters
 - Quit without waiting to connect
+- Allow peer editing while other is save / load
 - Line wrapping
-- Encryption with paspharse
+- Scrolling

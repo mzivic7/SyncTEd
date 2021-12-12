@@ -4,12 +4,8 @@ import socket
 import tkinter as tk
 from tkinter import filedialog
 
-# todo
-# subprocess quit
-# subprocess save load
-
-version = "Pre-alpha 0.3.5"
-date = "(11.12.2021)"
+version = "Pre-alpha 0.3.6"
+date = "(12.12.2021)"
 
 # --Functions-- #
 # prints text in box with word wrapping
@@ -29,30 +25,22 @@ def text_wrap(surface, text, pos, font, color=(0,0,0)):
             x += wordw + space   # go to next word position
 
 # save txt file with save dialog
-def save_txt(text):
+def save_txt(text, file_path):
     text_save = text.replace(" /n ", "\n")   # remove spaces around "/n"
     text_save = text_save.replace(tab_spaces, "\t")   # convert tab spaces to "\t"
-    
-    # auto save
-    #filename = "text"
-    #if os.path.exists(filename + ".txt"):   # if default name already exists:
-        #filename_num = filename + str(1) + ".txt"   # add number
-        #num = 1   # number to add
-        #while os.path.exists(filename_num):   # while exists file with that added number
-            #num += 1   # increase that number
-            #filename_num = filename + str(num) + ".txt"   # add number
-    #else: filename_num = "text.txt"   # if default name doesnt exist, use it
-    #save_file = open(filename_num,'w')   # create save file
-    
-    root = tk.Tk()   # define tkinter root
-    root.withdraw()   # make tkinter root invisible
-    save_file = filedialog.asksaveasfile(mode='w', initialfile = 'Untitled.txt', defaultextension=".txt",
-                                 filetypes=[("All Files","*.*"),("Text Documents","*.txt")])
-    if save_file is None:   # asksaveasfile return "None" if dialog closed with "cancel"
-        return
-    
+    if file_path == "":   # if there is no path from load file:
+        root = tk.Tk()   # define tkinter root
+        root.withdraw()   # make tkinter root invisible
+        save_file = filedialog.asksaveasfile(mode='w', initialfile = 'Untitled.txt', defaultextension=".txt",
+                                    filetypes=[("All Files","*.*"),("Text Documents","*.txt")])
+        if save_file is None:   # asksaveasfile return "None" if dialog closed with "cancel"
+            return ""
+    else:   # if there is path from load file:
+        save_file = open(file_path,'w')   # open that existing file
     save_file.write(text_save)   # write text to file
+    file_path = save_file.name
     save_file.close()   # close file
+    return file_path
     
 # load txt file with load dialog
 def load_txt():
@@ -67,7 +55,9 @@ def load_txt():
         file.close()
     except:   # if cant open file
         print("Error: File not found")
-    return text
+        text = ""
+        file_path = ""
+    return text, file_path
 
 # load value from line in config
 def load_config_val(position):
@@ -100,9 +90,8 @@ screen = pygame.display.set_mode([screen_w, screen_h])   # set window size
 clock = pygame.time.Clock()   # start clock
 font = pygame.font.Font("data/LiberationMono-Regular.ttf", 16)   # text font
 # keys unicode blacklist
-blst = [pygame.K_BACKSPACE, pygame.K_RETURN, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN, pygame.K_t, pygame.K_TAB]
+blst = [pygame.K_BACKSPACE, pygame.K_RETURN, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN, pygame.K_TAB]
 blst_client = ["/i/", "/b/", "/l/", "/r/", "/u/", "/d/", "/e/", "/t/"]
-
 
 # --Initial variables-- #
 text = ''   # empty text string
@@ -115,10 +104,11 @@ line2_x = 0
 line2_y = 0
 client_input = "/i/"
 tab_spaces = " " * tab_spaces_num   # create tab from spaces
+file_path = ""
 
 
-## --TCP protocol setup-- # ### subprocess quit
-if host == True:
+## --TCP protocol setup-- #
+if host is True:
     s = socket.socket()   # start socket
     s.bind((local_ip, int(local_port)))   # bind to local ip
     s.listen(5)  # wait for client
@@ -130,20 +120,19 @@ else:
 
 # --Main loop-- #
 run = True
-while run == True:
+while run is True:
     
     
     # --Comunication-- #
-    if host == True:   # host
+    if host is True:   # host
         try:
             data = str(i) + "/" + str(i2) + "/" + text   # pack all data in single var
             conn.send(data.encode())   # send that data
             client_input = conn.recv(64).decode()   # recive input from client
         except:   # if connection is lost:
-            #print("Client disconnected")
-            if save_quit == True:   # save text to file
+            if save_quit is True:   # save text to file
                 print("Saving")
-                save_txt(text)
+                file_path = save_txt(text, file_path)
             run = False   # break main loop
     else:   # client
         try:
@@ -156,9 +145,9 @@ while run == True:
             s.send(client_input.encode())  # send client input
         except:   # if connection is lost:
             #print("Host disconnected")
-            if save_quit == True:   # save text to file
+            if save_quit is True:   # save text to file
                 print("Saving")
-                save_txt(text)
+                file_path = save_txt(text, file_path)
             run = False   # break main loop
     
     
@@ -174,19 +163,20 @@ while run == True:
     
     
     # --Pygame interface-- #
-    if host == True:
+    if host is True:
         for e in pygame.event.get():
             if e.type == pygame.QUIT: # if quit
+                file_path = save_txt(text, file_path)   # save text to file
                 conn.close()   # disconnect
                 run = False   # break main loop
             if e.type == pygame.KEYDOWN:
                 n = 30   # make line visible
                 
                 if pygame.key.get_mods() == pygame.KMOD_LCTRL and e.key == pygame.K_s:  # if CTRL+S:
-                    save_txt(text)   # save text to file
+                    file_path = save_txt(text, file_path)   # save text to file
                 
                 if pygame.key.get_mods() == pygame.KMOD_LCTRL and e.key == pygame.K_l:  # if CTRL+L:
-                    text = load_txt() # load text from file
+                    text, file_path = load_txt() # load text from file
                 
                 if e.key == pygame.K_BACKSPACE:   # if BACKSPACE:
                     if i > 0:   # if it is not start of string
@@ -243,6 +233,7 @@ while run == True:
                 if e.key == pygame.K_DOWN:   # if DOWN arrow:
                     closest_newline = 0
                     second_closest = 0
+                    closest_num = 0
                     for linenum, newline in enumerate(newline_loc):   # for each "/n":
                         if newline >= i:   # if newline loc is greater than index loc
                             closest_newline = newline   # second closest to right
@@ -282,14 +273,15 @@ while run == True:
         client_input = "/i/"
         for e in pygame.event.get():
             if e.type == pygame.QUIT:   # if quit:
+                file_path = save_txt(text, file_path)   # save text to file
                 s.close()   # disconnect
                 run = False   # break main loop
             if e.type == pygame.KEYDOWN:
                 n = 30   # make line visible
                 if pygame.key.get_mods() == pygame.KMOD_LCTRL and e.key == pygame.K_s:  # if CTRL+S:
-                    save_txt(text)   # save text to file
+                    file_path = save_txt(text, file_path)   # save text to file
                 if pygame.key.get_mods() == pygame.KMOD_LCTRL and e.key == pygame.K_l:  # if CTRL+L:
-                    text = load_txt() # load text from file
+                    text, file_path = load_txt() # load text from file
                 if e.key == pygame.K_BACKSPACE:   # if BACKSPACE:
                     client_input = "/b/"
                 if e.key == pygame.K_LEFT:     # if LEFT arrow:
@@ -304,12 +296,12 @@ while run == True:
                     client_input = "/e/"
                 if e.key == pygame.K_TAB:  # if TAB:
                     client_input = "/t/"
-                if e.key not in blst and pygame.key.get_mods() != pygame.KMOD_LCTRL:   # if not any of above
+                if e.key not in blst and pygame.key.get_mods() == pygame.KMOD_NONE:   # if not any of above
                     client_input =  e.unicode   # take unicode input from keyboard 
     
     
     # --Client input-- #
-    if host == True:
+    if host is True:
         if client_input == "/b/":   # if BACKSPACE:
             if i2 > 0:   # if it is not start of string
                 if text[i2-4:i2] == " /n ":   # if "/n" is to be deleted
@@ -364,6 +356,7 @@ while run == True:
         if client_input == "/d/":   # if DOWN arrow:
             closest_newline = 0
             second_closest = 0
+            closest_num = 0
             for linenum, newline in enumerate(newline_loc):   # for each "/n":
                 if newline >= i2:   # if newline loc is greater than index loc
                     closest_newline = newline   # second closest to right
@@ -419,7 +412,7 @@ while run == True:
         if line_i <= i:   # if index is past invisible "/n"
             line_y += 19   # jump to next line
             line_x = 0   # move index on start of line
-        if host == True:   # draw black line for hosts index
+        if host is True:   # draw black line for hosts index
             pygame.draw.line(screen, (0, 0, 0), (line_x, line_y), (line_x, line_y + 19))
         else:   # draw red line for hosts index
             pygame.draw.line(screen, (255, 0, 0), (line_x, line_y), (line_x, line_y + 19))
@@ -437,7 +430,7 @@ while run == True:
         if line_i2 <= i2:
             line_y_2 += 19
             line_x_2 = 0
-        if host == True:   # draw red line for clients index
+        if host is True:   # draw red line for clients index
             pygame.draw.line(screen, (255, 0, 0), (line_x_2, line_y_2), (line_x_2, line_y_2 + 19))
         else:   # draw red line for clients index
             pygame.draw.line(screen, (0, 0, 0), (line_x_2, line_y_2), (line_x_2, line_y_2 + 19))
