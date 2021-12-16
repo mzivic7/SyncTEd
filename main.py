@@ -3,9 +3,10 @@ import os.path
 import socket
 import tkinter as tk
 from tkinter import filedialog
+import time
 
-version = "Pre-alpha 0.3.6"
-date = "(12.12.2021)"
+version = "Pre-alpha 0.3.7"
+date = "(16.12.2021)"
 
 # --Functions-- #
 # prints text in box with word wrapping
@@ -71,7 +72,7 @@ def load_config_val(position):
 
 # --Load config-- #
 host = eval(load_config_val(0))
-save_quit = eval(load_config_val(1))
+ask_save = eval(load_config_val(1))
 tab_spaces_num = int(load_config_val(2))
 screen_w = int(load_config_val(3))
 screen_h = int(load_config_val(4))
@@ -103,8 +104,10 @@ line_y = 0
 line2_x = 0
 line2_y = 0
 client_input = "/i/"
-tab_spaces = " " * tab_spaces_num   # create tab from spaces
+client_upload = False
+text_upload = ""
 file_path = ""
+tab_spaces = " " * tab_spaces_num   # create tab from spaces
 
 
 ## --TCP protocol setup-- #
@@ -129,13 +132,17 @@ while run is True:
             data = str(i) + "/" + str(i2) + "/" + text   # pack all data in single var
             conn.send(data.encode())   # send that data
             client_input = conn.recv(64).decode()   # recive input from client
+            if client_input == "/f/":   # if host will upload text
+                text = conn.recv(2048).decode()   # recive uploaded text from client
+                i, i2 = 0, 0   # reset index positions
+                client_input = "/i/"   # reset client input to default
         except:   # if connection is lost:
-            if save_quit is True:   # save text to file
-                print("Saving")
+            if text != "" and ask_save is True:   # save text to file
                 file_path = save_txt(text, file_path)
             run = False   # break main loop
     else:   # client
         try:
+            ping_start = time.perf_counter()   # start ping time
             data = s.recv(2048).decode()   # recive data
             data_lst = data.split('/')   # unpack data in list
             i = int(data_lst[0])   # take i from list
@@ -143,10 +150,13 @@ while run is True:
             header = len(str(i2)) + len(str(i)) + 2   # size of header containing i and i2
             text = data[header:]   # get text from without header
             s.send(client_input.encode())  # send client input
+            ping_end = time.perf_counter()   # end ping time
+            ping_time = round((ping_end - ping_start) * 1000)   # calculate ping time in ms
+            if client_upload is True:   # if client loaded text from file
+                s.send(text_upload.encode())   # upload text to host
+                client_upload = False   # stop uploading
         except:   # if connection is lost:
-            #print("Host disconnected")
-            if save_quit is True:   # save text to file
-                print("Saving")
+            if text != "" and  ask_save is True:   # save text to file
                 file_path = save_txt(text, file_path)
             run = False   # break main loop
     
@@ -166,7 +176,8 @@ while run is True:
     if host is True:
         for e in pygame.event.get():
             if e.type == pygame.QUIT: # if quit
-                file_path = save_txt(text, file_path)   # save text to file
+                if text != "" and ask_save is True:   # if there is some text
+                        file_path = save_txt(text, file_path)   # save before load
                 conn.close()   # disconnect
                 run = False   # break main loop
             if e.type == pygame.KEYDOWN:
@@ -176,7 +187,10 @@ while run is True:
                     file_path = save_txt(text, file_path)   # save text to file
                 
                 if pygame.key.get_mods() == pygame.KMOD_LCTRL and e.key == pygame.K_l:  # if CTRL+L:
+                    if text != "" and ask_save is True:   # if there is some text
+                        file_path = save_txt(text, file_path)   # save before load
                     text, file_path = load_txt() # load text from file
+                    i, i2 = 0, 0   # reset index positions
                 
                 if e.key == pygame.K_BACKSPACE:   # if BACKSPACE:
                     if i > 0:   # if it is not start of string
@@ -273,7 +287,8 @@ while run is True:
         client_input = "/i/"
         for e in pygame.event.get():
             if e.type == pygame.QUIT:   # if quit:
-                file_path = save_txt(text, file_path)   # save text to file
+                if text != "" and ask_save is True:   # if there is some text
+                        file_path = save_txt(text, file_path)   # save before load
                 s.close()   # disconnect
                 run = False   # break main loop
             if e.type == pygame.KEYDOWN:
@@ -281,7 +296,12 @@ while run is True:
                 if pygame.key.get_mods() == pygame.KMOD_LCTRL and e.key == pygame.K_s:  # if CTRL+S:
                     file_path = save_txt(text, file_path)   # save text to file
                 if pygame.key.get_mods() == pygame.KMOD_LCTRL and e.key == pygame.K_l:  # if CTRL+L:
-                    text, file_path = load_txt() # load text from file
+                    if text != "" and ask_save is True:   # if there is some text
+                        file_path = save_txt(text, file_path)   # save before load
+                    text_upload, file_path = load_txt()   # load text from file
+                    if file_path != "":   #if there is loaded file
+                        client_upload = True   # activate upload of loaded text
+                        client_input = "/f/"   # send host that client will uload
                 if e.key == pygame.K_BACKSPACE:   # if BACKSPACE:
                     client_input = "/b/"
                 if e.key == pygame.K_LEFT:     # if LEFT arrow:
@@ -434,11 +454,14 @@ while run is True:
             pygame.draw.line(screen, (255, 0, 0), (line_x_2, line_y_2), (line_x_2, line_y_2 + 19))
         else:   # draw red line for clients index
             pygame.draw.line(screen, (0, 0, 0), (line_x_2, line_y_2), (line_x_2, line_y_2 + 19))
-        
             
     if n >= 70:   # make cursor visible for 40 itterations
         n = 0   # reset counter
     n += 1   # counter
+    
+    # prit ping
+    if host is False:   # only for client
+        screen.blit(font.render(str(ping_time) + "ms", True, (100, 100, 100)), (screen_w - 50, screen_h - 21))   # print ping
     
     pygame.display.flip()   # update screen
     clock.tick(60)   # screen update frequency

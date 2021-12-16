@@ -9,13 +9,12 @@ This text editor consist from 2 parts: host and client.
 They are ran on different devices. Host must be firts.
 Which one is host is set in "conf.txt" located in "data" folder in project dir.
 Host must be on LAN, port-forwareded or tunneled with [ngrok](https://ngrok.com/). Port and host adress must be set in "conf.txt".
-SyncTEd is not suitable for TOR, since it has large latency.
+SyncTEd requires minimal latency, bellow 150ms is recommended. TOR, for example, is not suitable.
 
 In "conf.txt" are several more settings:
 - Host - if True: this is host, if False: this is client
-- Save on quit - set False to stop it from asking to save on quit
-- 
-Tab spaces num - change how many spaces wide will be tab
+- Ask save - set False to stop it from asking to save
+- Tab spaces num - change how many spaces wide will be tab
 - Window width and heigth - in pixels
 - Client address and port - this config is only for client, hosts adress and port on which client will connect
 - Host local address and port - this config is only for host, address and port on which will client cnnect 
