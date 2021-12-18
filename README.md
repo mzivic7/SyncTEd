@@ -14,17 +14,21 @@ SyncTEd requires minimal latency, bellow 150ms is recommended. TOR, for example,
 In "conf.txt" are several more settings:
 - Host - if True: this is host, if False: this is client
 - Ask save - set False to stop it from asking to save
+- Encryption - if True asymetric RSA encryption will be used for communication
 - Tab spaces num - change how many spaces wide will be tab
 - Window width and heigth - in pixels
 - Client address and port - this config is only for client, hosts adress and port on which client will connect
 - Host local address and port - this config is only for host, address and port on which will client cnnect 
+
 Keys:
 - Up, Down, Left, Right arrows
 - Tab
 - Save: CTRL+S
 - Load: CTRL+L
 
-[basic ngrok setup](use_with_ngrok.md)
+[Encryption setup](encryption_setup.md)
+
+[Basic ngrok setup](use_with_ngrok.md)
 ## Building
 ### Linux
 1. Clone this repositiry: `git clone https://github.com/mzivic7/SyncTEd.git`
@@ -38,8 +42,8 @@ Keys:
 4. Install requirements: `pip install -r requirements.txt`
 5. Run build script: `python build.py`
 ## To Do
-- Encryption with paspharse or RSA
-- Allow client to load file
+- Send data larger than 2048 bits
+- Hold arrows to move fast
 - Capital letters
 - Quit without waiting to connect
 - Allow peer editing while other is save / load

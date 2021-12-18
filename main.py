@@ -1,12 +1,16 @@
 import pygame
 import os.path
 import socket
+import time
 import tkinter as tk
 from tkinter import filedialog
-import time
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.PublicKey import RSA
 
-version = "Pre-alpha 0.3.7"
-date = "(16.12.2021)"
+
+version = "Pre-alpha 0.3.8"
+date = "(18.12.2021)"
+
 
 # --Functions-- #
 # prints text in box with word wrapping
@@ -69,19 +73,44 @@ def load_config_val(position):
     conf_line = conf_line.split("=")   # read line as list
     return conf_line[1]
 
+# generate RSA keypair
+def rsa_gen_key():
+    priv_key = RSA.generate(2048)   # generate private key with size
+    pub_key = priv_key.publickey()   # generate public key from private
+    priv_pem = priv_key.export_key().decode()   # convert private key to string
+    pub_pem = pub_key.export_key().decode()   # convert public key to string
+    with open("data/private_key.pem", 'w') as priv:   # write keys to pem files
+        priv.write(priv_pem)
+    with open("data/public_key.pem", 'w') as pub:
+        pub.write(pub_pem)
+    return pub_key, priv_key
+
+# RSA encryption
+def rsa_enc(plaintext, peer_pub_key):
+    cipher = PKCS1_OAEP.new(key=peer_pub_key)   # prepare for encryption with key
+    cipher_text = cipher.encrypt(plaintext.encode())   # encrypt data
+    return cipher_text
+
+# RSA decryption
+def rsa_dec(cipher_text, priv_key):
+    decrypt = PKCS1_OAEP.new(key=priv_key)   # prepare for decryption with key
+    plaintext = decrypt.decrypt(cipher_text).decode()   # decrypt data
+    return plaintext
+
 
 # --Load config-- #
 host = eval(load_config_val(0))
 ask_save = eval(load_config_val(1))
-tab_spaces_num = int(load_config_val(2))
-screen_w = int(load_config_val(3))
-screen_h = int(load_config_val(4))
-client_ip = str(load_config_val(5))
-client_port = int(load_config_val(6))
-local_ip = str(load_config_val(7))
-local_port = int(load_config_val(8))
-client_ip = client_ip[:len(client_ip)-1]
-local_ip = local_ip[:len(local_ip)-1]
+encryption = eval(load_config_val(2))
+tab_spaces_num = int(load_config_val(3))
+screen_w = int(load_config_val(4))
+screen_h = int(load_config_val(5))
+client_ip = str(load_config_val(6))
+client_port = int(load_config_val(7))
+local_ip = str(load_config_val(8))
+local_port = int(load_config_val(9))
+client_ip = client_ip[:len(client_ip)-1]   # remove whitespace
+local_ip = local_ip[:len(local_ip)-1]   # remove whitespace
 
 
 # --initialize GUI-- #
@@ -91,7 +120,7 @@ screen = pygame.display.set_mode([screen_w, screen_h])   # set window size
 clock = pygame.time.Clock()   # start clock
 font = pygame.font.Font("data/LiberationMono-Regular.ttf", 16)   # text font
 # keys unicode blacklist
-blst = [pygame.K_BACKSPACE, pygame.K_RETURN, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN, pygame.K_TAB]
+blst = [pygame.K_BACKSPACE, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN, pygame.K_RETURN, pygame.K_TAB]
 blst_client = ["/i/", "/b/", "/l/", "/r/", "/u/", "/d/", "/e/", "/t/"]
 
 # --Initial variables-- #
@@ -108,52 +137,88 @@ client_upload = False
 text_upload = ""
 file_path = ""
 tab_spaces = " " * tab_spaces_num   # create tab from spaces
+run = True
 
 
-## --TCP protocol setup-- #
-if host is True:
-    s = socket.socket()   # start socket
-    s.bind((local_ip, int(local_port)))   # bind to local ip
-    s.listen(5)  # wait for client
-    conn, address = s.accept()   # establish connection
-else:
-    s = socket.socket()   # start socket
-    s.connect((str(client_ip), int(client_port))) # connect to host
+# --RSA keys-- #
+# load private key
+if encryption is True:
+    try: priv_key = RSA.import_key(open("data/private_key.pem", 'r').read())   # load and convert private key
+    except: 
+        root = tk.Tk()   # define tkinter root
+        root.withdraw()   # make tkinter root invisible
+        file_path = filedialog.askopenfilename()   # get path from dialog
+        try: priv_key = RSA.import_key(open(file_path, 'r').read())   # load key from that path
+        except: pub_key, priv_key = rsa_gen_key()   # if key is not loaded: generate keys
+    # load peer public key
+    try: peer_pub_key = RSA.import_key(open("data/peer_public_key.pem", 'r').read())   # load and convert public key
+    except: 
+        root = tk.Tk()   # define tkinter root
+        root.withdraw()   # make tkinter root invisible
+        file_path = filedialog.askopenfilename()   # get path from dialog
+        try: peer_pub_key = RSA.import_key(open(file_path, 'r').read())   # load key from that path
+        except: run = False   # if key is not loaded: end program
+
+
+## --TCP protocol setup-- ##
+if run is True:
+    if host is True:
+        s = socket.socket()   # start socket
+        s.bind((local_ip, int(local_port)))   # bind to local ip
+        s.listen(5)  # wait for client
+        conn, address = s.accept()   # establish connection
+    else:
+        s = socket.socket()   # start socket
+        s.connect((str(client_ip), int(client_port))) # connect to host
 
 
 # --Main loop-- #
-run = True
 while run is True:
-    
     
     # --Comunication-- #
     if host is True:   # host
         try:
             data = str(i) + "/" + str(i2) + "/" + text   # pack all data in single var
-            conn.send(data.encode())   # send that data
-            client_input = conn.recv(64).decode()   # recive input from client
+            if encryption is True: 
+                conn.send(rsa_enc(data, peer_pub_key))   # send encrypted data
+                client_input_enc = conn.recv(2048)   # recive input from client
+                client_input = rsa_dec(client_input_enc, priv_key)   # decrypt it
+            else:
+                conn.send(data.encode())   # send data
+                client_input = conn.recv(2048).decode()   # recive input from client
             if client_input == "/f/":   # if host will upload text
-                text = conn.recv(2048).decode()   # recive uploaded text from client
+                if encryption is True: 
+                    text_enc = conn.recv(2048)   # recive input from client
+                    text = rsa_dec(text_enc, priv_key)   # decrypt it
+                else: text = conn.recv(2048).decode()   # recive uploaded text from client
                 i, i2 = 0, 0   # reset index positions
                 client_input = "/i/"   # reset client input to default
         except:   # if connection is lost:
             if text != "" and ask_save is True:   # save text to file
                 file_path = save_txt(text, file_path)
             run = False   # break main loop
+        
     else:   # client
         try:
             ping_start = time.perf_counter()   # start ping time
-            data = s.recv(2048).decode()   # recive data
+            if encryption is True: 
+                data = s.recv(2048)   # recive data
+                data = rsa_dec(data, priv_key)   # decrypt it
+            else:
+                data = s.recv(2048).decode()   # recive data
             data_lst = data.split('/')   # unpack data in list
             i = int(data_lst[0])   # take i from list
             i2 = int(data_lst[1])   # take i2 from list
             header = len(str(i2)) + len(str(i)) + 2   # size of header containing i and i2
             text = data[header:]   # get text from without header
-            s.send(client_input.encode())  # send client input
+            if encryption is True: s.send(rsa_enc(client_input, peer_pub_key))   # send encrypted data
+            else: s.send(client_input.encode())  # send client input
             ping_end = time.perf_counter()   # end ping time
             ping_time = round((ping_end - ping_start) * 1000)   # calculate ping time in ms
             if client_upload is True:   # if client loaded text from file
-                s.send(text_upload.encode())   # upload text to host
+                if encryption is True: 
+                    s.send(rsa_enc(text_upload, peer_pub_key))   # send encrypted data
+                else: s.send(text_upload.encode())   # upload text to host
                 client_upload = False   # stop uploading
         except:   # if connection is lost:
             if text != "" and  ask_save is True:   # save text to file
