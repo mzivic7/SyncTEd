@@ -24,7 +24,9 @@ Edit "conf.txt":
 - Set `host_local_port = ` to be same as port ngrok outputed with address.
 Client should now run SyncTEd, and connection should be established.
 
-In ngrok can also be set region, this will decrese latency.
+In ngrok can also be set region, this will decrese latency if correct region is set.
 Use this command instead one in step 4:
 - on windows: `ngrok tcp -region <region code> <port>`
 - on linux: `./ngrok tcp -region <region code> <port>`
+
+You can ping and see all available ngrok regions [here](https://cloudpingtest.com/ngrok).

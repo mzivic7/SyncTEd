@@ -2,17 +2,20 @@ import pygame
 import os.path
 import socket
 import time
+import string
 import tkinter as tk
 from tkinter import filedialog
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.PublicKey import RSA
 
 
-version = "Pre-alpha 0.3.8"
-date = "(18.12.2021)"
+
+version = "Pre-alpha 0.3.9"
+date = "(20.12.2021)"
 
 
-# --Functions-- #
+
+###### --Functions-- ######
 # prints text in box with word wrapping
 def text_wrap(surface, text, pos, font, color=(0,0,0)):
     words = text.split(' ')   # convert string to list of words
@@ -98,7 +101,8 @@ def rsa_dec(cipher_text, priv_key):
     return plaintext
 
 
-# --Load config-- #
+
+###### --Load config-- ######
 host = eval(load_config_val(0))
 ask_save = eval(load_config_val(1))
 encryption = eval(load_config_val(2))
@@ -113,34 +117,47 @@ client_ip = client_ip[:len(client_ip)-1]   # remove whitespace
 local_ip = local_ip[:len(local_ip)-1]   # remove whitespace
 
 
-# --initialize GUI-- #
+
+###### --initialize GUI-- ######
 pygame.init()   # initialize pygame
 pygame.display.set_caption('SyncTED')   # window tittle
 screen = pygame.display.set_mode([screen_w, screen_h])   # set window size
 clock = pygame.time.Clock()   # start clock
 font = pygame.font.Font("data/LiberationMono-Regular.ttf", 16)   # text font
-# keys unicode blacklist
-blst = [pygame.K_BACKSPACE, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN, pygame.K_RETURN, pygame.K_TAB]
-blst_client = ["/i/", "/b/", "/l/", "/r/", "/u/", "/d/", "/e/", "/t/"]
 
-# --Initial variables-- #
+
+
+###### --Initial variables-- ######
+run = True   # start main loop
 text = ''   # empty text string
-n = 0
-i = 0
-i2 = 0
-line_x = 0
-line_y = 0
-line2_x = 0
-line2_y = 0
-client_input = "/i/"
-client_upload = False
-text_upload = ""
-file_path = ""
+n = 0   # timer for blinking line
+i = i2 = 0   # indexes
+
+client_input = "/i/"   # default input sent from client
+client_upload = False   # is client uploading
+text_upload = ""   #what text is client uploading
+
+line_x = line_y = 0
+line2_x = line2_y = 0
+
+backspace = arrow_l = arrow_r = arrow_u = arrow_d = enter = tab = False   # if key is pressed and held
+key_trig = False   # if any input key is pressed
+push = True   # first iteration when pressed key
+hold = 0   # timer for move delay
+
+# auto-tune ### todo
+hold_first = 25   # delay on first step on button hold
+hold_delay = 2   # delay between 2 steps on button hold
+blinking_line_on = 40   # how long will blinking line be visible
+blinking_line_off = 30   # how long will blinking line be invisible
+
+file_path = ""   # path to loaded text file
 tab_spaces = " " * tab_spaces_num   # create tab from spaces
-run = True
+characters = set(string.ascii_letters + string.digits + string.punctuation + " ")   # create all characters set
 
 
-# --RSA keys-- #
+
+###### --RSA keys-- ######
 # load private key
 if encryption is True:
     try: priv_key = RSA.import_key(open("data/private_key.pem", 'r').read())   # load and convert private key
@@ -160,7 +177,8 @@ if encryption is True:
         except: run = False   # if key is not loaded: end program
 
 
-## --TCP protocol setup-- ##
+
+###### --TCP protocol setup-- ######
 if run is True:
     if host is True:
         s = socket.socket()   # start socket
@@ -172,10 +190,11 @@ if run is True:
         s.connect((str(client_ip), int(client_port))) # connect to host
 
 
-# --Main loop-- #
+
+###### --Main loop-- ######
 while run is True:
     
-    # --Comunication-- #
+    ###### --Comunication-- ######
     if host is True:   # host
         try:
             data = str(i) + "/" + str(i2) + "/" + text   # pack all data in single var
@@ -226,7 +245,7 @@ while run is True:
             run = False   # break main loop
     
     
-    # --Locate newlines-- #
+    ###### --Locate newlines-- #####
     loc = 0
     loc_prev = 0
     newline_loc = []   # location of newline signs
@@ -237,7 +256,7 @@ while run is True:
             newline_loc.append(loc)  # append it to list
     
     
-    # --Pygame interface-- #
+    ###### --Host pygame interface-- ######
     if host is True:
         for e in pygame.event.get():
             if e.type == pygame.QUIT: # if quit
@@ -246,8 +265,7 @@ while run is True:
                 conn.close()   # disconnect
                 run = False   # break main loop
             if e.type == pygame.KEYDOWN:
-                n = 30   # make line visible
-                
+
                 if pygame.key.get_mods() == pygame.KMOD_LCTRL and e.key == pygame.K_s:  # if CTRL+S:
                     file_path = save_txt(text, file_path)   # save text to file
                 
@@ -257,36 +275,67 @@ while run is True:
                     text, file_path = load_txt() # load text from file
                     i, i2 = 0, 0   # reset index positions
                 
-                if e.key == pygame.K_BACKSPACE:   # if BACKSPACE:
-                    if i > 0:   # if it is not start of string
-                        if text[i-4:i] == " /n ":   # if "/n" is to be deleted
-                            text = text[:i-4] + text[i:]   # delete 4 chars
-                            if i2 >= i:   # if i is smaller or equal than i2
-                                i2 -= 4   # move i2 left
-                            i -= 4   # move i left
-                        else:
-                            text = text[:i-1] + text[i:]   # remove last char
-                            if i >= 1:   # if it is not start of string
-                                if i2 >= i:   # if i is smaller or equal than i2
-                                    i2 -= 1   # move i2 left
-                                i -= 1    # move i left
-                                
+                if e.key == pygame.K_BACKSPACE: backspace = key_trig = True  # if BACKSPACE:         
+                if e.key == pygame.K_LEFT: arrow_l = key_trig = True   # if LEFT arrow:
+                if e.key == pygame.K_RIGHT: arrow_r = key_trig = True   # if RIGHT arrow:
+                if e.key == pygame.K_UP: arrow_u = key_trig = True   # if UP arrow:
+                if e.key == pygame.K_DOWN: arrow_d = key_trig = True   # if DOWN arrow:
+                if e.key == pygame.K_RETURN: enter = key_trig = True   # if ENTER:
+                if e.key == pygame.K_TAB: tab = key_trig = True   # if TAB:
+                if e.unicode in characters:   # if unicode input is in characters set   ###
+                    text = text[:i] + e.unicode + text[i:]   # take unicode input from keyboard
+                    if i2 > i:   # if i is smaller than i2
+                        i2 += 1   # move i2 right
+                    i += 1   # move i right
+            
+            # reset arrow keys states if key is released
+            if e.type == pygame.KEYUP:
+                if e.key == pygame.K_BACKSPACE: backspace = False
+                if e.key == pygame.K_LEFT: arrow_l = False
+                if e.key == pygame.K_RIGHT: arrow_r = False
+                if e.key == pygame.K_UP: arrow_u = False
+                if e.key == pygame.K_DOWN: arrow_d = False
+                if e.key == pygame.K_RETURN: enter = False
+                if e.key == pygame.K_TAB: tab = False
+                hold = hold_first   # reset delay after pushing button
+                push = True   # reset activation of delay after button
+                key_trig = False   # no input keys are pressed
                 
-                if e.key == pygame.K_LEFT:     # if LEFT arrow:
+                
+                
+        ###### --Host input processing-- ######
+        if key_trig is True:   # if any input key is pressed
+            n = blinking_line_off   # make blinking line not blinking
+            if hold >= hold_first:   # after delay, do processing
+                if backspace is True:   # BACKSPACE
+                        if i > 0:   # if it is not start of string
+                            if text[i-4:i] == " /n ":   # if "/n" is to be deleted
+                                text = text[:i-4] + text[i:]   # delete 4 chars
+                                if i2 >= i:   # if i is smaller or equal than i2
+                                    i2 -= 4   # move i2 left
+                                i -= 4   # move i left
+                            else:
+                                text = text[:i-1] + text[i:]   # remove last char
+                                if i >= 1:   # if it is not start of string
+                                    if i2 >= i:   # if i is smaller or equal than i2
+                                        i2 -= 1   # move i2 left
+                                    i -= 1    # move i left
+
+                if arrow_l is True:   # LEFT arrow:
                     if text[i-4:i] == " /n ":   # if "/n" is on the way:
                         i -= 4   # jump over it
                     else:
                         if i >= 1:   # if it is not start of string
                             i -= 1    # move i left
-                
-                if e.key == pygame.K_RIGHT:     # if RIGHT arrow:
+                            
+                if arrow_r is True:   # RIGHT arrow:
                     if text[i:i+4] == " /n ":   # if "/n" is on the way:
                         i += 4   # jump over it
                     else:
                         if i < len(text):   # if it is not end of line
                             i += 1    # move i right
-                
-                if e.key == pygame.K_UP:     # if UP arrow:
+                            
+                if arrow_u is True:   # UP arrow:
                     closest_newline = 0
                     second_closest = 0
                     for newline in newline_loc:   # for each "/n":
@@ -309,7 +358,7 @@ while run is True:
                             i -= closest_newline - second_closest   # go to same loc but on above line
                             if second_closest == 0: i -= 4   # if it is on first line add 4 to skip "/n" sign
                 
-                if e.key == pygame.K_DOWN:   # if DOWN arrow:
+                if arrow_d is True:   # DOWN arrow:
                     closest_newline = 0
                     second_closest = 0
                     closest_num = 0
@@ -331,25 +380,30 @@ while run is True:
                             i += closest_newline - left_closest   # go to same loc but on below line
                             if left_closest == 0: i += 4   # if it is on first line add 4 to skip "/n" sign
                 
-                if e.key == pygame.K_RETURN:   # if ENTER:
+                if enter is True:   # ENTER
                     text = text[:i] + " /n " + text[i:]
                     if i < i2:   # if i is smaller than i2
                         i2 += 4   # move i2 4 character right
                     i += 4    # move i right
-                
-                if e.key == pygame.K_TAB:  # if TAB:
+                    
+                if tab is True:   # TAB
                     text = text[:i] + tab_spaces + text[i:]   # write tab as spaces
                     if i2 > i:   # if i is smaller than i2
                         i2 += tab_spaces_num   # move i2 right
                     i += tab_spaces_num   # move i right
-                
-                if e.key not in blst and pygame.key.get_mods() == pygame.KMOD_NONE:   # if not any of above
-                    text = text[:i] + e.unicode + text[i:]   # take unicode input from keyboard
-                    if i2 > i:   # if i is smaller than i2
-                        i2 += 1   # move i2 right
-                    i += 1   # move i right
+                    
+                    # delay and repeat after pushing and holding key
+                if push is True:   # if this is first iteration:
+                    hold = 0   # large delay at begining
+                    push = False   # stop that from repeating
+                else: hold = hold_first - hold_delay   # after that, make delay small
+            hold += 1   # iterrate delay
+        
+    
+    
+    ###### --Client pygame interface-- ######
     else:
-        client_input = "/i/"
+        client_input = "/i/"   # reset client input
         for e in pygame.event.get():
             if e.type == pygame.QUIT:   # if quit:
                 if text != "" and ask_save is True:   # if there is some text
@@ -357,7 +411,6 @@ while run is True:
                 s.close()   # disconnect
                 run = False   # break main loop
             if e.type == pygame.KEYDOWN:
-                n = 30   # make line visible
                 if pygame.key.get_mods() == pygame.KMOD_LCTRL and e.key == pygame.K_s:  # if CTRL+S:
                     file_path = save_txt(text, file_path)   # save text to file
                 if pygame.key.get_mods() == pygame.KMOD_LCTRL and e.key == pygame.K_l:  # if CTRL+L:
@@ -366,26 +419,53 @@ while run is True:
                     text_upload, file_path = load_txt()   # load text from file
                     if file_path != "":   #if there is loaded file
                         client_upload = True   # activate upload of loaded text
-                        client_input = "/f/"   # send host that client will uload
+                        client_input = "/f/"   # notify host that client will uload
                 if e.key == pygame.K_BACKSPACE:   # if BACKSPACE:
-                    client_input = "/b/"
+                    client_input_buff = "/b/"
+                    key_trig = True
                 if e.key == pygame.K_LEFT:     # if LEFT arrow:
-                    client_input = "/l/"
+                    client_input_buff = "/l/"
+                    key_trig = True
                 if e.key == pygame.K_RIGHT:     # if RIGHT arrow:
-                    client_input = "/r/"
+                    client_input_buff = "/r/"
+                    key_trig = True
                 if e.key == pygame.K_UP:     # if UP arrow:
-                    client_input = "/u/"
+                    client_input_buff = "/u/"
+                    key_trig = True
                 if e.key == pygame.K_DOWN:   # if DOWN arrow:
-                    client_input = "/d/"
+                    client_input_buff = "/d/"
+                    key_trig = True
                 if e.key == pygame.K_RETURN:   # if ENTER:
-                    client_input = "/e/"
+                    client_input_buff = "/e/"
+                    key_trig = True
                 if e.key == pygame.K_TAB:  # if TAB:
-                    client_input = "/t/"
-                if e.key not in blst and pygame.key.get_mods() == pygame.KMOD_NONE:   # if not any of above
-                    client_input =  e.unicode   # take unicode input from keyboard 
+                    client_input_buff = "/t/"
+                    key_trig = True
+                if e.unicode in characters:   # if unicode input is in characters set
+                    client_input_buff = e.unicode   # take unicode input from keyboard 
+                    key_trig = True
+            
+            # reset arrow keys states if key is released
+            if e.type == pygame.KEYUP:
+                hold = hold_first   # reset delay after pushing button
+                push = True   # reset activation of delay after button
+                key_trig = False   # no input keys are pressed
+                client_input = client_input_buff = "/i/"   # reset client input and buffer
+                
+        # delay and repeat after pushing and holding key
+        if key_trig == True:
+            n = blinking_line_off   # make blinking line not blinking
+            if hold >= hold_first:   # after delay, do processing
+                client_input = client_input_buff
+                if push is True:   # if this is first iteration:
+                    hold = 0   # large delay at begining
+                    push = False   # stop that from repeating
+                else: hold = hold_first - hold_delay   # after that, make delay small
+            hold += 1   # iterrate delay
     
     
-    # --Client input-- #
+    
+    ###### --Client input processing on host-- ######
     if host is True:
         if client_input == "/b/":   # if BACKSPACE:
             if i2 > 0:   # if it is not start of string
@@ -472,19 +552,20 @@ while run is True:
                 i += 4   # move i right
             i2 += 4   # move i2 right
             
-        if client_input not in blst_client:  # if not any of above
-            text = text[:i2] + client_input + text[i2:]   # take unicode input from keyboard
+        if client_input in characters:   # if unicode input is in characters set
+            text = text[:i2] + client_input + text[i2:]   # write unicode input
             if i > i2:   # if i is smaller than i2
                 i += 1   # move i right
             i2 += 1   # move i2 right
         
-            
-    # --Display-- #
+         
+
+    ###### --Display-- ######
     screen.fill((255, 255, 255))   # fill screen with white color
     text_wrap(screen, text, (0, 0, screen_w, screen_h), font)
-    if n >= 30:   # make cursor invisible for 30 itterations
+    if n >= blinking_line_off:   # make blinking line invisible for 30 iterations
         
-        # calculate cursor position for i
+        # calculate blinking line position for i
         text_lines = text.split(' /n ')   # get list with strings separated by text lines
         line, line_i, line_i_prev = 0, 0, 0   # initial values
         while line_i < i:    # while index is greater than line ih which it is
@@ -502,7 +583,7 @@ while run is True:
         else:   # draw red line for hosts index
             pygame.draw.line(screen, (255, 0, 0), (line_x, line_y), (line_x, line_y + 19))
         
-        # calculate cursor position for i2
+        # calculate blinking line position for i2
         text_lines = text.split(' /n ')
         line, line_i2, line_i2_prev = 0, 0, 0
         while line_i2 < i2:
@@ -520,11 +601,11 @@ while run is True:
         else:   # draw red line for clients index
             pygame.draw.line(screen, (0, 0, 0), (line_x_2, line_y_2), (line_x_2, line_y_2 + 19))
             
-    if n >= 70:   # make cursor visible for 40 itterations
+    if n >= blinking_line_off + blinking_line_on:   # make blinking line visible for 40 iterations
         n = 0   # reset counter
     n += 1   # counter
     
-    # prit ping
+    # print ping
     if host is False:   # only for client
         screen.blit(font.render(str(ping_time) + "ms", True, (100, 100, 100)), (screen_w - 50, screen_h - 21))   # print ping
     

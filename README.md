@@ -23,6 +23,8 @@ In "conf.txt" are several more settings:
 Keys:
 - Up, Down, Left, Right arrows
 - Tab
+- Shift
+- Caps Lock
 - Save: CTRL+S
 - Load: CTRL+L
 
@@ -43,9 +45,7 @@ Keys:
 5. Run build script: `python build.py`
 ## To Do
 - Send data larger than 2048 bits
-- Hold arrows to move fast
-- Capital letters
+- Single-user mode
 - Quit without waiting to connect
-- Allow peer editing while other is save / load
 - Line wrapping
 - Scrolling
