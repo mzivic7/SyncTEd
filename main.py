@@ -3,118 +3,28 @@ import os.path
 import socket
 import time
 import string
-import tkinter as tk
-from tkinter import filedialog
-from Crypto.Cipher import PKCS1_OAEP
-from Crypto.PublicKey import RSA
+
+from syncted import fileops
+from syncted import txtrsa
+from syncted import graphics
 
 
-
-version = "Pre-alpha 0.3.9"
-date = "(20.12.2021)"
-
-
-
-###### --Functions-- ######
-# prints text in box with word wrapping
-def text_wrap(surface, text, pos, font, color=(0,0,0)):
-    words = text.split(' ')   # convert string to list of words
-    space = font.size(' ')[0]   # the width of a space
-    x, y, maxw, maxh = pos   # get dimension
-    for word in words:   # for each word in list:
-        if word != "/n":   # if word is not newline
-            word_surf = font.render(word, True, color)   # create word surface
-        wordw, wordh = word_surf.get_size()   # get word size
-        if x + wordw >= maxw or word == "/n":   # if word goes over max or it is newline
-            x = pos[0]   # reset x
-            y += wordh   # start on new row
-        if word != "/n":   # if word is not newline
-            surface.blit(word_surf, (x, y))   # show word
-            x += wordw + space   # go to next word position
-
-# save txt file with save dialog
-def save_txt(text, file_path):
-    text_save = text.replace(" /n ", "\n")   # remove spaces around "/n"
-    text_save = text_save.replace(tab_spaces, "\t")   # convert tab spaces to "\t"
-    if file_path == "":   # if there is no path from load file:
-        root = tk.Tk()   # define tkinter root
-        root.withdraw()   # make tkinter root invisible
-        save_file = filedialog.asksaveasfile(mode='w', initialfile = 'Untitled.txt', defaultextension=".txt",
-                                    filetypes=[("All Files","*.*"),("Text Documents","*.txt")])
-        if save_file is None:   # asksaveasfile return "None" if dialog closed with "cancel"
-            return ""
-    else:   # if there is path from load file:
-        save_file = open(file_path,'w')   # open that existing file
-    save_file.write(text_save)   # write text to file
-    file_path = save_file.name
-    save_file.close()   # close file
-    return file_path
-    
-# load txt file with load dialog
-def load_txt():
-    root = tk.Tk()   # define tkinter root
-    root.withdraw()   # make tkinter root invisible
-    file_path = filedialog.askopenfilename()   # open load file dialog and get path
-    try:
-        file = open(file_path,"r")   # open file
-        text = (file.read())   # load all text from file
-        text = text.replace("\n", " /n ")   # add spaces around "/n"
-        text = text.replace("\t", tab_spaces)   # convert "\t" to tab spaces
-        file.close()
-    except:   # if cant open file
-        print("Error: File not found")
-        text = ""
-        file_path = ""
-    return text, file_path
-
-# load value from line in config
-def load_config_val(position):
-    conf_file = open("data/conf.txt")   # open settings file
-    conf_lines = conf_file.readlines()   # read settings
-    conf_file.close()   # close file
-    conf_line = conf_lines[position].replace(" ", "")
-    conf_line = conf_line.split("=")   # read line as list
-    return conf_line[1]
-
-# generate RSA keypair
-def rsa_gen_key():
-    priv_key = RSA.generate(2048)   # generate private key with size
-    pub_key = priv_key.publickey()   # generate public key from private
-    priv_pem = priv_key.export_key().decode()   # convert private key to string
-    pub_pem = pub_key.export_key().decode()   # convert public key to string
-    with open("data/private_key.pem", 'w') as priv:   # write keys to pem files
-        priv.write(priv_pem)
-    with open("data/public_key.pem", 'w') as pub:
-        pub.write(pub_pem)
-    return pub_key, priv_key
-
-# RSA encryption
-def rsa_enc(plaintext, peer_pub_key):
-    cipher = PKCS1_OAEP.new(key=peer_pub_key)   # prepare for encryption with key
-    cipher_text = cipher.encrypt(plaintext.encode())   # encrypt data
-    return cipher_text
-
-# RSA decryption
-def rsa_dec(cipher_text, priv_key):
-    decrypt = PKCS1_OAEP.new(key=priv_key)   # prepare for decryption with key
-    plaintext = decrypt.decrypt(cipher_text).decode()   # decrypt data
-    return plaintext
+version = "Pre-alpha 0.4.0"
+date = "(13.1.2022)"
 
 
 
 ###### --Load config-- ######
-host = eval(load_config_val(0))
-ask_save = eval(load_config_val(1))
-encryption = eval(load_config_val(2))
-tab_spaces_num = int(load_config_val(3))
-screen_w = int(load_config_val(4))
-screen_h = int(load_config_val(5))
-client_ip = str(load_config_val(6))
-client_port = int(load_config_val(7))
-local_ip = str(load_config_val(8))
-local_port = int(load_config_val(9))
-client_ip = client_ip[:len(client_ip)-1]   # remove whitespace
-local_ip = local_ip[:len(local_ip)-1]   # remove whitespace
+host = eval(fileops.load_config_val(0))
+ask_save = eval(fileops.load_config_val(1))
+encryption = eval(fileops.load_config_val(2))
+tab_spaces_num = int(fileops.load_config_val(3))
+screen_w = int(fileops.load_config_val(4))
+screen_h = int(fileops.load_config_val(5))
+client_ip = str(fileops.load_config_val(6)).replace("\n", "").replace(" ", "")
+client_port = int(fileops.load_config_val(7))
+local_ip = str(fileops.load_config_val(8)).replace("\n", "").replace(" ", "")
+local_port = int(fileops.load_config_val(9))
 
 
 
@@ -146,10 +56,10 @@ push = True   # first iteration when pressed key
 hold = 0   # timer for move delay
 
 # auto-tune ### todo
-hold_first = 25   # delay on first step on button hold
-hold_delay = 2   # delay between 2 steps on button hold
-blinking_line_on = 40   # how long will blinking line be visible
-blinking_line_off = 30   # how long will blinking line be invisible
+hold_first = 40   # delay on first step on button hold
+hold_delay = 4   # delay between 2 steps on button hold
+blinking_line_on = 70   # how long will blinking line be visible
+blinking_line_off = 50   # how long will blinking line be invisible
 
 file_path = ""   # path to loaded text file
 tab_spaces = " " * tab_spaces_num   # create tab from spaces
@@ -158,22 +68,16 @@ characters = set(string.ascii_letters + string.digits + string.punctuation + " "
 
 
 ###### --RSA keys-- ######
-# load private key
 if encryption is True:
-    try: priv_key = RSA.import_key(open("data/private_key.pem", 'r').read())   # load and convert private key
+    # load private key
+    try: priv_key = fileops.load_saved_key("data/private_key.pem")   # load and convert private key
     except: 
-        root = tk.Tk()   # define tkinter root
-        root.withdraw()   # make tkinter root invisible
-        file_path = filedialog.askopenfilename()   # get path from dialog
-        try: priv_key = RSA.import_key(open(file_path, 'r').read())   # load key from that path
-        except: pub_key, priv_key = rsa_gen_key()   # if key is not loaded: generate keys
+        try: priv_key = fileops.load_key()   # try to load key from dialog
+        except: pub_key, priv_key = txtrsa.gen_key()   # if key is not loaded: generate keys
     # load peer public key
-    try: peer_pub_key = RSA.import_key(open("data/peer_public_key.pem", 'r').read())   # load and convert public key
+    try: peer_pub_key = fileops.load_saved_key("data/peer_public_key.pem")   # load and convert public key
     except: 
-        root = tk.Tk()   # define tkinter root
-        root.withdraw()   # make tkinter root invisible
-        file_path = filedialog.askopenfilename()   # get path from dialog
-        try: peer_pub_key = RSA.import_key(open(file_path, 'r').read())   # load key from that path
+        try: peer_pub_key = fileops.load_key()   # try to load key from dialog
         except: run = False   # if key is not loaded: end program
 
 
@@ -199,30 +103,31 @@ while run is True:
         try:
             data = str(i) + "/" + str(i2) + "/" + text   # pack all data in single var
             if encryption is True: 
-                conn.send(rsa_enc(data, peer_pub_key))   # send encrypted data
+                conn.send(txtrsa.enc(data, peer_pub_key))   # send encrypted data
                 client_input_enc = conn.recv(2048)   # recive input from client
-                client_input = rsa_dec(client_input_enc, priv_key)   # decrypt it
+                client_input = txtrsa.dec(client_input_enc, priv_key)   # decrypt it
             else:
                 conn.send(data.encode())   # send data
                 client_input = conn.recv(2048).decode()   # recive input from client
             if client_input == "/f/":   # if host will upload text
                 if encryption is True: 
                     text_enc = conn.recv(2048)   # recive input from client
-                    text = rsa_dec(text_enc, priv_key)   # decrypt it
+                    text = txtrsa.dec(text_enc, priv_key)   # decrypt it
                 else: text = conn.recv(2048).decode()   # recive uploaded text from client
                 i, i2 = 0, 0   # reset index positions
                 client_input = "/i/"   # reset client input to default
         except:   # if connection is lost:
             if text != "" and ask_save is True:   # save text to file
-                file_path = save_txt(text, file_path)
+                file_path = fileops.save_txt(text, file_path, tab_spaces)
             run = False   # break main loop
+            exit()   # quit now
         
     else:   # client
         try:
             ping_start = time.perf_counter()   # start ping time
             if encryption is True: 
                 data = s.recv(2048)   # recive data
-                data = rsa_dec(data, priv_key)   # decrypt it
+                data = txtrsa.dec(data, priv_key)   # decrypt it
             else:
                 data = s.recv(2048).decode()   # recive data
             data_lst = data.split('/')   # unpack data in list
@@ -230,19 +135,20 @@ while run is True:
             i2 = int(data_lst[1])   # take i2 from list
             header = len(str(i2)) + len(str(i)) + 2   # size of header containing i and i2
             text = data[header:]   # get text from without header
-            if encryption is True: s.send(rsa_enc(client_input, peer_pub_key))   # send encrypted data
+            if encryption is True: s.send(txtrsa.enc(client_input, peer_pub_key))   # send encrypted data
             else: s.send(client_input.encode())  # send client input
             ping_end = time.perf_counter()   # end ping time
             ping_time = round((ping_end - ping_start) * 1000)   # calculate ping time in ms
             if client_upload is True:   # if client loaded text from file
                 if encryption is True: 
-                    s.send(rsa_enc(text_upload, peer_pub_key))   # send encrypted data
+                    s.send(txtrsa.enc(text_upload, peer_pub_key))   # send encrypted data
                 else: s.send(text_upload.encode())   # upload text to host
                 client_upload = False   # stop uploading
         except:   # if connection is lost:
             if text != "" and  ask_save is True:   # save text to file
-                file_path = save_txt(text, file_path)
+                file_path = fileops.save_txt(text, file_path)
             run = False   # break main loop
+            exit()   # quit now
     
     
     ###### --Locate newlines-- #####
@@ -261,18 +167,18 @@ while run is True:
         for e in pygame.event.get():
             if e.type == pygame.QUIT: # if quit
                 if text != "" and ask_save is True:   # if there is some text
-                        file_path = save_txt(text, file_path)   # save before load
+                        file_path = fileops.save_txt(text, file_path, tab_spaces)   # save before load
                 conn.close()   # disconnect
                 run = False   # break main loop
             if e.type == pygame.KEYDOWN:
 
                 if pygame.key.get_mods() == pygame.KMOD_LCTRL and e.key == pygame.K_s:  # if CTRL+S:
-                    file_path = save_txt(text, file_path)   # save text to file
+                    file_path = fileops.save_txt(text, file_path, tab_spaces)   # save text to file
                 
                 if pygame.key.get_mods() == pygame.KMOD_LCTRL and e.key == pygame.K_l:  # if CTRL+L:
                     if text != "" and ask_save is True:   # if there is some text
-                        file_path = save_txt(text, file_path)   # save before load
-                    text, file_path = load_txt() # load text from file
+                        file_path = fileops.save_txt(text, file_path, tab_spaces)   # save before load
+                    text, file_path = fileops.load_txt(tab_spaces) # load text from file
                     i, i2 = 0, 0   # reset index positions
                 
                 if e.key == pygame.K_BACKSPACE: backspace = key_trig = True  # if BACKSPACE:         
@@ -308,18 +214,18 @@ while run is True:
             n = blinking_line_off   # make blinking line not blinking
             if hold >= hold_first:   # after delay, do processing
                 if backspace is True:   # BACKSPACE
-                        if i > 0:   # if it is not start of string
-                            if text[i-4:i] == " /n ":   # if "/n" is to be deleted
-                                text = text[:i-4] + text[i:]   # delete 4 chars
+                    if i > 0:   # if it is not start of string
+                        if text[i-4:i] == " /n ":   # if "/n" is to be deleted
+                            text = text[:i-4] + text[i:]   # delete 4 chars
+                            if i2 >= i:   # if i is smaller or equal than i2
+                                i2 -= 4   # move i2 left
+                            i -= 4   # move i left
+                        else:
+                            text = text[:i-1] + text[i:]   # remove last char
+                            if i >= 1:   # if it is not start of string
                                 if i2 >= i:   # if i is smaller or equal than i2
-                                    i2 -= 4   # move i2 left
-                                i -= 4   # move i left
-                            else:
-                                text = text[:i-1] + text[i:]   # remove last char
-                                if i >= 1:   # if it is not start of string
-                                    if i2 >= i:   # if i is smaller or equal than i2
-                                        i2 -= 1   # move i2 left
-                                    i -= 1    # move i left
+                                    i2 -= 1   # move i2 left
+                                i -= 1    # move i left
 
                 if arrow_l is True:   # LEFT arrow:
                     if text[i-4:i] == " /n ":   # if "/n" is on the way:
@@ -407,16 +313,16 @@ while run is True:
         for e in pygame.event.get():
             if e.type == pygame.QUIT:   # if quit:
                 if text != "" and ask_save is True:   # if there is some text
-                        file_path = save_txt(text, file_path)   # save before load
+                        file_path = fileops.save_txt(text, file_path, tab_spaces)   # save before load
                 s.close()   # disconnect
                 run = False   # break main loop
             if e.type == pygame.KEYDOWN:
                 if pygame.key.get_mods() == pygame.KMOD_LCTRL and e.key == pygame.K_s:  # if CTRL+S:
-                    file_path = save_txt(text, file_path)   # save text to file
+                    file_path = fileops.save_txt(text, file_path, tab_spaces)   # save text to file
                 if pygame.key.get_mods() == pygame.KMOD_LCTRL and e.key == pygame.K_l:  # if CTRL+L:
                     if text != "" and ask_save is True:   # if there is some text
-                        file_path = save_txt(text, file_path)   # save before load
-                    text_upload, file_path = load_txt()   # load text from file
+                        file_path = fileops.save_txt(text, file_path, tab_spaces)   # save before load
+                    text_upload, file_path = fileops.load_txt(tab_spaces)   # load text from file
                     if file_path != "":   #if there is loaded file
                         client_upload = True   # activate upload of loaded text
                         client_input = "/f/"   # notify host that client will uload
@@ -560,54 +466,24 @@ while run is True:
         
          
 
-    ###### --Display-- ######
+    ###### --Graphics-- ######
     screen.fill((255, 255, 255))   # fill screen with white color
-    text_wrap(screen, text, (0, 0, screen_w, screen_h), font)
+    graphics.text_wrap(screen, text, (0, 0, screen_w, screen_h), font)
     if n >= blinking_line_off:   # make blinking line invisible for 30 iterations
-        
-        # calculate blinking line position for i
-        text_lines = text.split(' /n ')   # get list with strings separated by text lines
-        line, line_i, line_i_prev = 0, 0, 0   # initial values
-        while line_i < i:    # while index is greater than line ih which it is
-            line_i += len(text_lines[line]) + 4   # get length of that line from start
-            if line != 0:    # if index is not in first line
-                line_i_prev += len(text_lines[line - 1]) + 4   # find previous line
-            line += 1   # go to next line in list
-        line_y = 19 * (line - 1)   # calculate y coordinate
-        line_x = 10 * (i - line_i_prev)   # calculate x coordinate
-        if line_i <= i:   # if index is past invisible "/n"
-            line_y += 19   # jump to next line
-            line_x = 0   # move index on start of line
-        if host is True:   # draw black line for hosts index
-            pygame.draw.line(screen, (0, 0, 0), (line_x, line_y), (line_x, line_y + 19))
-        else:   # draw red line for hosts index
-            pygame.draw.line(screen, (255, 0, 0), (line_x, line_y), (line_x, line_y + 19))
-        
-        # calculate blinking line position for i2
-        text_lines = text.split(' /n ')
-        line, line_i2, line_i2_prev = 0, 0, 0
-        while line_i2 < i2:
-            line_i2 += len(text_lines[line]) + 4
-            if line != 0: 
-                line_i2_prev += len(text_lines[line - 1]) + 4
-            line += 1
-        line_y_2 = 19 * (line - 1)
-        line_x_2 = 10 * (i2 - line_i2_prev)
-        if line_i2 <= i2:
-            line_y_2 += 19
-            line_x_2 = 0
-        if host is True:   # draw red line for clients index
-            pygame.draw.line(screen, (255, 0, 0), (line_x_2, line_y_2), (line_x_2, line_y_2 + 19))
-        else:   # draw red line for clients index
-            pygame.draw.line(screen, (0, 0, 0), (line_x_2, line_y_2), (line_x_2, line_y_2 + 19))
-            
-    if n >= blinking_line_off + blinking_line_on:   # make blinking line visible for 40 iterations
+        graphics.blinking_line(screen, host, text, i)   # black line for local index
+        graphics.blinking_line(screen, host, text, i2, invert=True)   # red line for peer index
+    if n >= blinking_line_off + blinking_line_on:   # make blinking line visible
         n = 0   # reset counter
     n += 1   # counter
     
     # print ping
     if host is False:   # only for client
-        screen.blit(font.render(str(ping_time) + "ms", True, (100, 100, 100)), (screen_w - 50, screen_h - 21))   # print ping
+        if ping_time < 50:   # print green ping
+            screen.blit(font.render(str(ping_time) + "ms", True, (100, 200, 100)), (screen_w - 50, screen_h - 21))
+        elif ping_time > 100:   # print red ping
+            screen.blit(font.render(str(ping_time) + "ms", True, (200, 50, 50)), (screen_w - 50, screen_h - 21))
+        else:   # print orange ping
+            screen.blit(font.render(str(ping_time) + "ms", True, (200, 100, 50)), (screen_w - 50, screen_h - 21))
     
     pygame.display.flip()   # update screen
-    clock.tick(60)   # screen update frequency
+    clock.tick(100)   # screen update frequency
