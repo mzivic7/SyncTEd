@@ -47,6 +47,7 @@ def load_config_val(position):
     conf_line = conf_line.split("=")   # read line as list
     return conf_line[1]
 
+# load key from file with tkinter filedialog
 def load_key():
     root = tk.Tk()   # define tkinter root
     root.withdraw()   # make tkinter root invisible
@@ -54,5 +55,6 @@ def load_key():
     key = RSA.import_key(open(file_path, 'r').read())   # load key from that path
     return key
 
+# load key from specific path
 def load_saved_key(path):
     return RSA.import_key(open(path, 'r').read())
