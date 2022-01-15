@@ -27,15 +27,13 @@ def load_txt(tab_spaces):
     root.withdraw()   # make tkinter root invisible
     file_path = filedialog.askopenfilename()   # open load file dialog and get path
     try:
-        file = open(file_path,"r")   # open file
-        text = (file.read())   # load all text from file
-        text = text.replace("\n", " /n ")   # add spaces around "/n"
-        text = text.replace("\t", tab_spaces)   # convert "\t" to tab spaces
-        file.close()
+        with open(file_path) as file:
+            text = file.read()   # load all text from file
+            text = text.replace("\n", " /n ")   # add spaces around "/n"
+            text = text.replace("\t", tab_spaces)   # convert "\t" to tab spaces
     except:   # if cant open file
         print("Error: File not found")
-        text = ""
-        file_path = ""
+        text, file_path = "", ""
     return text, file_path
 
 # load value from line in config

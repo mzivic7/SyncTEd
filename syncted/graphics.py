@@ -35,3 +35,12 @@ def blinking_line(screen, host, text, i, invert=False):
         pygame.draw.line(screen, (0, 0, 0), (line_x, line_y), (line_x, line_y + 19))
     else:   # draw red line for peer index
         pygame.draw.line(screen, (255, 0, 0), (line_x, line_y), (line_x, line_y + 19))
+
+def print_ping(screen, screen_dim, font, ping_time):
+    screen_w, screen_h = screen_dim
+    if ping_time < 50:   # print green ping
+        screen.blit(font.render(str(ping_time) + "ms", True, (100, 200, 100)), (screen_w - 50, screen_h - 21))
+    elif ping_time > 100:   # print red ping
+        screen.blit(font.render(str(ping_time) + "ms", True, (200, 50, 50)), (screen_w - 50, screen_h - 21))
+    else:   # print orange ping
+        screen.blit(font.render(str(ping_time) + "ms", True, (200, 100, 50)), (screen_w - 50, screen_h - 21))

@@ -30,7 +30,7 @@ Keys:
 
 [Encryption setup](encryption_setup.md)
 
-[Basic ngrok setup](use_with_ngrok.md)
+[ngrok setup](use_with_ngrok.md)
 ## Building
 ### Linux
 1. Clone this repositiry: `git clone https://github.com/mzivic7/SyncTEd.git`
