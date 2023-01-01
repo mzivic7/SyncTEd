@@ -1,7 +1,11 @@
 import os
 import shutil
+from sys import platform
 
-os.system('pyinstaller --noconfirm --onedir --windowed --clean --name "SyncTEd" --add-data "data:data/"  "main.py"')
+if platform == "win32":
+    os.system('pyinstaller --noconfirm --onedir --windowed --clean --add-data "data:data/" --name "SyncTEd" "main.py"')
+else:
+    os.system('python -m PyInstaller --noconfirm --onedir --windowed --clean --add-data "data:data/" --name "SyncTEd" "main.py"')
 
 os.remove('SyncTEd.spec')
 shutil.rmtree('build')
