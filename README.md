@@ -49,9 +49,7 @@ Keys:
 
 ## To Do
 - Send data larger than 2048 bits
-- Quit without waiting to connect
 - Smart tab (add correct number of spaces, backspace deletes whole tab)
-- Auto add indentation on newline
 - Line wrapping
 - Scrolling and scrollbar
 - Selecting (mouse, click, keyboard)

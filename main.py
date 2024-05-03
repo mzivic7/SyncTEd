@@ -1,5 +1,4 @@
 import pygame
-import os.path
 import socket
 import time
 import string

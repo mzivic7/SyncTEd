@@ -1,6 +1,6 @@
 To enable encryption of all transferred data, both host and client must enable encryption in conf.txt.
 
-RSA encryption with asymetric 2048-bit keys is used. Host and peer must exchange their public keys.
+RSA encryption with asymmetric 2048-bit keys is used. Host and peer must exchange their public keys.
 
 Setup:
 1. Both host and client edit conf.txt:
@@ -11,7 +11,7 @@ Setup:
 - Key-pair is generated in "data" directory.
 3. Client repeat process same as host did in step 3.
 4. Both host and client exchange their public keys.
-- public key is in "data" directory with name "publc_key.pem"
+- public key is in "data" directory with name "public_key.pem"
 - Host should saves clients public key in "data" directory as "peer_public_key.pem" or load it after launching SyncTEd.
 - Client should do same with hosts public key.
 5. Host run SyncTEd first, than client. If keys are correct, connection should be established.

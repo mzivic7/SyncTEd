@@ -40,6 +40,8 @@ def up_arrow(text, i):
         if newline < i:
             second_closest = closest_newline   # second closest to left is previous closest
             closest_newline = newline    # closest newline to left
+        else:
+            break
     # if there is closest newline
     if closest_newline != 0:
         # if index location on current line is greater than length of above line:
@@ -75,7 +77,7 @@ def down_arrow(text, i):
         second_closest = newline_loc[closest_num + 1]   # find second_closest
     except Exception:
         second_closest = len(text)   # it it doesn't exist, it is end of text
-        
+
     if closest_num > 0:
         left_closest = newline_loc[closest_num - 1]   # find left_closest
     else:
@@ -112,10 +114,25 @@ def backspace(text, i, i2):
 
 def enter(text, i, i2):
     """ENTER key"""
-    text = text[:i] + " /n " + text[i:]
+    newlines = locate_newline(text)
+    left_closest = 0
+    # find index of previous and next line break
+    for linenum, newline in enumerate(newlines):
+        if newline < i:
+            left_closest = newline + 4
+        else:
+            break
+    # count spaces from start of line to first non space char
+    spaces_on_this_line = 0
+    for char in text[left_closest:i]:
+        if char == " ":
+            spaces_on_this_line += 1
+        else:
+            break
+    text = text[:i] + " /n " + spaces_on_this_line * " " + text[i:]
     if i < i2:   # if i is smaller than i2
-        i2 += 4   # move i2 4 character right
-    i += 4    # move i right
+        i2 += 4 + spaces_on_this_line   # move i2 right
+    i += 4 + spaces_on_this_line    # move i right
     return text, i, i2
 
 
@@ -135,4 +152,3 @@ def input_char(text, i, i2, char):
         i2 += 1   # move i2 right
     i += 1   # move i right
     return text, i, i2
-    
