@@ -1,14 +1,14 @@
 import os
 import shutil
-from sys import platform
+import sys
 
-if platform == "win32":
-    os.system('pyinstaller --noconfirm --onedir --windowed --clean --add-data "data:data/" --name "SyncTEd" "main.py"')
+if sys.platform == "win32":
+    os.system('python -m PyInstaller --noconfirm --onedir --windowed --clean --contents-directory "libraries" --name "SyncTEd" "main.py"')
+elif sys.platform == "linux":
+    os.system('python -m PyInstaller --noconfirm --onedir --windowed --clean --contents-directory "libraries" --name "SyncTEd" "main.py"')
 else:
-    os.system('python -m PyInstaller --noconfirm --onedir --windowed --clean --add-data "data:data/" --name "SyncTEd" "main.py"')
+    print("This platform is not supported: " + sys.platform)
+    sys.exit()
 
-os.remove('SyncTEd.spec')
-shutil.rmtree('build')
-shutil.rmtree('__pycache__')
-shutil.copytree('dist/', './', dirs_exist_ok=True)
-shutil.rmtree('dist')
+shutil.copytree("data/", "dist/SyncTEd/data/", dirs_exist_ok=True)
+shutil.copy("LiberationMono-Regular.ttf", "dist/SyncTEd/LiberationMono-Regular.ttf")

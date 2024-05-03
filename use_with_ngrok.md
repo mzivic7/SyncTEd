@@ -1,6 +1,6 @@
 1. Create account on [ngrok](https://ngrok.com/)
 2. Download ngrok
-3. Get authtoken and run cmd in dir where is ngrok downloaded then run: 
+3. Get authtoken and run cmd in dir where is ngrok downloaded then run:
 - on windows: `ngrok authtoken <your_authtoken>`
 - on linux: `./ngrok authtoken <your_authtoken>`
 4. Start ngrok
@@ -20,11 +20,11 @@ This ":xxxx" is port to which client should connect.
 8. Client side:
 Edit "conf.txt":
 - Set `host = False`
-- Set `host_local_address = ` to be address that ngrok outputed to host.
-- Set `host_local_port = ` to be same as port ngrok outputed with address.
+- Set `host_local_address = ` to be address that ngrok outputted to host.
+- Set `host_local_port = ` to be same as port ngrok outputted with address.
 Client should now run SyncTEd, and connection should be established.
 
-In ngrok can also be set region, this will decrese latency if correct region is set.
+In ngrok can also be set region, this will decrease latency if correct region is set.
 Use this command instead one in step 4:
 - on windows: `ngrok tcp -region <region code> <port>`
 - on linux: `./ngrok tcp -region <region code> <port>`

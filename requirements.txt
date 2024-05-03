@@ -2,5 +2,3 @@ pygame
 pyinstaller
 pycryptodome
 tkinter
-socket
-os.path
